@@ -1,0 +1,11 @@
+{
+	"name": "hono-router",
+	"version": "1.0.0",
+	"description": "hotloading Typescript to generate file-based routing config for Hono",
+	"main": "index.js",
+	"author": "Stu Kennedy",
+	"license": "ISC",
+	"devDependencies": {
+		"hono": "^4.5.3"
+	}
+}
