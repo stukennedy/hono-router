@@ -1,7 +1,7 @@
 {
 	"name": "hono-router",
-	"version": "1.0.1",
-	"description": "hotloading Typescript to generate file-based routing config for Hono",
+	"version": "1.0.2",
+	"description": "hotloading script to generate file-based routing config for Hono",
 	"author": "Stu Kennedy",
 	"license": "ISC",
 	"keywords": [

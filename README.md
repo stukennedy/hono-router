@@ -1,6 +1,6 @@
 # hono-router
 
-`hono-router` is a TypeScript script that generates a file-based router for [Hono](https://hono.dev/), a small, simple, and ultrafast web framework for the Edges. It automatically creates routes based on your file structure and exports, making it easier to organize and maintain your Hono application.
+`hono-router` is a script that generates a file-based router for [Hono](https://hono.dev/), a small, simple, and ultrafast web framework for the Edges. It automatically creates routes based on your file structure and exports, making it easier to organize and maintain your Hono application.
 
 ## Features
 
