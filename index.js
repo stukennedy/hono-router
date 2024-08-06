@@ -122,9 +122,9 @@ const generateRoutes = (dir, out) => {
 	 * @param {Route} b
 	 * @returns {number}
 	 */
-	const sortRoutes = (a, b) => {
-		const aParts = a.path.split('/');
-		const bParts = b.path.split('/');
+	const sortPaths = (a, b) => {
+		const aParts = a.split('/');
+		const bParts = b.split('/');
 		for (let i = 0; i < Math.max(aParts.length, bParts.length); i++) {
 			const aPart = aParts[i] || '';
 			const bPart = bParts[i] || '';
@@ -137,7 +137,10 @@ const generateRoutes = (dir, out) => {
 		return 0;
 	};
 
-	routes.sort(sortRoutes);
+	// sort imports by path
+	imports.sort((a, b) => sortPaths(a.match(/'(.*)'/)[1], b.match(/'(.*)'/)[1]));
+	// sort routes by path
+	routes.sort((a, b) => sortPaths(a.path, b.path));
 
 	const routesOutput = routes.map(
 		(route) => `app.${route.method}('${route.path}', ${route.handler});`
