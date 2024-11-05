@@ -54,7 +54,7 @@ const isCapitalized = (str) => {
  * @param {string} dir
  * @param {string} out
  */
-const generateRoutes = (dir, out) => {
+const generateRoutes = (dir, out, isDeno) => {
 	/** @type {string[]} */
 	const imports = [];
 	/** @type {Route[]} */
@@ -87,7 +87,7 @@ const generateRoutes = (dir, out) => {
 						.replace(/[@/]/g, '_')
 						.replace(/^_+/, '')
 						.replace(/\[(.+?)\]/g, '$1'); // Ensure valid variable names
-					const importPathString = importPath.replace(/index$/, '');
+					const importPathString = isDeno ? path.join(basePath, entry.name) : importPath.replace(/index$/, '');
 					const relativePath = path
 						.relative(path.dirname(out), path.join(dir, importPathString))
 						.replace(/\\/g, '/');
@@ -159,7 +159,15 @@ export const loadRoutes = <T extends Env>(app: Hono<T>) => {
 	console.log(colors.magenta, `Routes generated in ${out}`, colors.reset);
 };
 
-const [routesDir, outputFile] = process.argv.slice(2);
+const args = process.argv.slice(2);
+const denoFlagIndex = args.indexOf('--deno');
+const isDeno = denoFlagIndex !== -1;
+
+if (isDeno) {
+    args.splice(denoFlagIndex, 1); // Remove the --deno flag from the arguments
+}
+
+const [routesDir, outputFile] = args;
 if (!routesDir || !outputFile) {
 	console.error(
 		colors.red,
@@ -170,7 +178,7 @@ if (!routesDir || !outputFile) {
 }
 
 // Initial generation
-generateRoutes(routesDir, outputFile);
+generateRoutes(routesDir, outputFile, isDeno);
 
 // Watch mode
 fs.watch(routesDir, { recursive: true }, (eventType, filename) => {
@@ -179,5 +187,5 @@ fs.watch(routesDir, { recursive: true }, (eventType, filename) => {
 		`Detected ${eventType} in ${filename}, regenerating router.ts...`,
 		colors.reset
 	);
-	generateRoutes(routesDir, outputFile);
+	generateRoutes(routesDir, outputFile, isDeno);
 });
