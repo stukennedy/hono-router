@@ -1,6 +1,6 @@
 {
 	"name": "hono-router",
-	"version": "1.0.6",
+	"version": "1.0.7",
 	"description": "hotloading script to generate file-based routing config for Hono",
 	"author": "Stu Kennedy",
 	"license": "ISC",

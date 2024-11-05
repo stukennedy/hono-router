@@ -70,7 +70,7 @@ const generateRoutes = (dir, out, isDeno) => {
 
 		for (const entry of entries) {
 			const entryPath = path.join(currentPath, entry.name);
-			const importPath = path
+			const importPath = path.posix
 				.join(basePath, entry.name)
 				.replace(/\.(ts|tsx)$/, '');
 			if (entry.isDirectory()) {
@@ -84,11 +84,11 @@ const generateRoutes = (dir, out, isDeno) => {
 				const methods = getExportedMethods(fileContent);
 				if (methods.length > 0) {
 					const safeName = importPath
-						.replace(/[@/]/g, '_')
+						.replace(/[@/\\]/g, '_')
 						.replace(/^_+/, '')
-						.replace(/\[(.+?)\]/g, '$1'); // Ensure valid variable names
-					const importPathString = isDeno ? path.join(basePath, entry.name) : importPath.replace(/index$/, '');
-					const relativePath = path
+						.replace(/\[(.+?)\]/g, '$1');
+					const importPathString = isDeno ? path.posix.join(basePath, entry.name) : importPath.replace(/index$/, '');
+					const relativePath = path.posix
 						.relative(path.dirname(out), path.join(dir, importPathString))
 						.replace(/\\/g, '/');
 					imports.push(`import * as ${safeName} from './${relativePath}';`);
