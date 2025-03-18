@@ -19,12 +19,13 @@ const colors = {
  * @property {string} method
  * @property {string} path
  * @property {string} handler
+ * @property {boolean} isFactory
  */
 
 /**
  * Get exported methods from file content
  * @param {string} fileContent
- * @returns {string[]}
+ * @returns {Array<{method: string, isFactory: boolean}>}
  */
 const getExportedMethods = (fileContent) => {
 	const methods = [
@@ -34,9 +35,20 @@ const getExportedMethods = (fileContent) => {
 		'onRequestDelete',
 		'onRequestPatch',
 	];
-	return methods.filter((method) =>
-		fileContent.includes(`export const ${method}`)
-	);
+	
+	return methods.flatMap(method => {
+		// Check for factory method export (array return)
+		const factoryRegex = new RegExp(`export const ${method} = .*createHandlers`);
+		if (factoryRegex.test(fileContent)) {
+			return [{ method, isFactory: true }];
+		}
+
+		// Check for standard export
+		if (fileContent.includes(`export const ${method}`)) {
+			return [{ method, isFactory: false }];
+		}
+		return [];
+	});
 };
 
 /**
@@ -81,18 +93,19 @@ const generateRoutes = (dir, out, isDeno) => {
 				(entry.name.endsWith('.ts') || entry.name.endsWith('.tsx'))
 			) {
 				const fileContent = fs.readFileSync(entryPath, 'utf-8');
-				const methods = getExportedMethods(fileContent);
-				if (methods.length > 0) {
+				const exportedMethods = getExportedMethods(fileContent);
+				if (exportedMethods.length > 0) {
 					const safeName = importPath
 						.replace(/[@/\\]/g, '_')
 						.replace(/^_+/, '')
-						.replace(/\[(.+?)\]/g, '$1');
+						.replace(/\[(.+?)\]/g, '$1')
+						.replace(/-/g, '_');
 					const importPathString = isDeno ? path.posix.join(basePath, entry.name) : importPath.replace(/index$/, '');
 					const relativePath = path.posix
 						.relative(path.dirname(out), path.join(dir, importPathString))
 						.replace(/\\/g, '/');
 					imports.push(`import * as ${safeName} from './${relativePath}';`);
-					methods.forEach((method) => {
+					exportedMethods.forEach(({ method, isFactory }) => {
 						const routePath = importPath
 							.replace(/index$/, '')
 							.replace(/\[(.+?)\]/g, ':$1')
@@ -100,13 +113,14 @@ const generateRoutes = (dir, out, isDeno) => {
 						const methodName = method.replace('onRequest', '').toLowerCase();
 						console.log(
 							colors.blue,
-							`${methodName.toUpperCase()} /${routePath}`,
+							`${methodName.toUpperCase()} /${routePath}${isFactory ? ' (factory)' : ''}`,
 							colors.reset
 						);
 						routes.push({
 							method: methodName,
 							path: `/${routePath}`,
 							handler: `${safeName}.${method}`,
+							isFactory
 						});
 					});
 				}
@@ -142,8 +156,10 @@ const generateRoutes = (dir, out, isDeno) => {
 	// sort routes by path
 	routes.sort((a, b) => sortPaths(a.path, b.path));
 
-	const routesOutput = routes.map(
-		(route) => `app.${route.method}('${route.path}', ${route.handler});`
+	const routesOutput = routes.map(route => 
+		route.isFactory 
+			? `app.${route.method}('${route.path}', ...${route.handler});`
+			: `app.${route.method}('${route.path}', ${route.handler});`
 	);
 
 	const outputContent = `
