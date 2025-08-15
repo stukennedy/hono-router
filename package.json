@@ -13,6 +13,10 @@
 	"bin": {
 		"hono-router": "./index.js"
 	},
+	"scripts": {
+		"test": "node --test",
+		"test:watch": "node --test --watch"
+	},
 	"devDependencies": {
 		"hono": "^4.7.4"
 	}
