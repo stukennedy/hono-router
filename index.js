@@ -98,8 +98,8 @@ const generateRoutes = (dir, out, isDeno) => {
 					const safeName = importPath
 						.replace(/[@/\\]/g, '_')
 						.replace(/^_+/, '')
-						.replace(/\[(.+?)\]/g, '$1')
-						.replace(/-/g, '_');
+						.replace(/-/g, '_')
+						.replace(/\[(.+?)\]/g, '$1');
 					const importPathString = isDeno ? path.posix.join(basePath, entry.name) : importPath.replace(/index$/, '');
 					const relativePath = path.posix
 						.relative(path.dirname(out), path.join(dir, importPathString))
@@ -176,18 +176,26 @@ export const loadRoutes = <T extends Env>(app: Hono<T>) => {
 };
 
 const args = process.argv.slice(2);
+
+// Check for watch flag
+const watchFlagIndex = args.findIndex(arg => arg === '--watch' || arg === '-w');
+const isWatchMode = watchFlagIndex !== -1;
+if (isWatchMode) {
+	args.splice(watchFlagIndex, 1); // Remove the watch flag from the arguments
+}
+
+// Check for deno flag
 const denoFlagIndex = args.indexOf('--deno');
 const isDeno = denoFlagIndex !== -1;
-
 if (isDeno) {
-    args.splice(denoFlagIndex, 1); // Remove the --deno flag from the arguments
+	args.splice(denoFlagIndex, 1); // Remove the --deno flag from the arguments
 }
 
 const [routesDir, outputFile] = args;
 if (!routesDir || !outputFile) {
 	console.error(
 		colors.red,
-		'Usage: npx hono-router <routesDir> <outputFile>',
+		'Usage: npx hono-router <routesDir> <outputFile> [--watch | -w] [--deno]',
 		colors.reset
 	);
 	process.exit(1);
@@ -196,12 +204,15 @@ if (!routesDir || !outputFile) {
 // Initial generation
 generateRoutes(routesDir, outputFile, isDeno);
 
-// Watch mode
-fs.watch(routesDir, { recursive: true }, (eventType, filename) => {
-	console.log(
-		colors.green,
-		`Detected ${eventType} in ${filename}, regenerating router.ts...`,
-		colors.reset
-	);
-	generateRoutes(routesDir, outputFile, isDeno);
-});
+// Watch mode only if flag is provided
+if (isWatchMode) {
+	console.log(colors.cyan, 'Watching for changes...', colors.reset);
+	fs.watch(routesDir, { recursive: true }, (eventType, filename) => {
+		console.log(
+			colors.green,
+			`Detected ${eventType} in ${filename}, regenerating router.ts...`,
+			colors.reset
+		);
+		generateRoutes(routesDir, outputFile, isDeno);
+	});
+}

@@ -7,7 +7,7 @@
 - Automatically generates routes based on your file structure
 - Supports dynamic routes (e.g., `[id].ts` becomes `:id` in the route)
 - Allows co-location of component files with routes
-- Watches for file changes and regenerates the router
+- Optional watch mode for automatic regeneration on file changes
 - Sorts routes to prioritize static paths over dynamic paths
 - Supports multiple HTTP methods (GET, PUT, POST, DELETE, PATCH)
 - Can be run with [Bun](https://bun.sh/) for fast execution
@@ -55,14 +55,18 @@ export const onRequestPut = (c: Context) => {
 3. Run the router generator script:
 
 ```bash
-bunx hono-router src/routes router.ts
+bunx hono-router src/routes router.ts [options]
 ```
 
 or
 
 ```bash
-npx hono-router src/routes router.ts
+npx hono-router src/routes router.ts [options]
 ```
+
+**Options:**
+- `--watch` or `-w`: Enable watch mode to automatically regenerate routes on file changes
+- `--deno`: Generate Deno-compatible imports
 
 This will generate a `router.ts` file with all your routes.
 
@@ -91,7 +95,13 @@ This feature helps in maintaining a clean and organized project structure where 
 
 ## Watch Mode
 
-The script automatically watches for changes in your routes directory and regenerates the router file when changes are detected.
+To enable watch mode, use the `--watch` or `-w` flag when running the script:
+
+```bash
+npx hono-router src/routes router.ts --watch
+```
+
+In watch mode, the script will continuously monitor your routes directory and automatically regenerate the router file when changes are detected.
 
 ## Supported HTTP Methods
 
