@@ -6,9 +6,10 @@
 
 - Automatically generates routes based on your file structure
 - Supports dynamic routes (e.g., `[id].ts` becomes `:id` in the route)
+- Supports greedy/catch-all routes (e.g., `[[blob]].ts` for one or more segments, `[...rest].ts` for zero or more)
 - Allows co-location of component files with routes
 - Optional watch mode for automatic regeneration on file changes
-- Sorts routes to prioritize static paths over dynamic paths
+- Intelligent route sorting: static paths > dynamic paths > greedy paths
 - Supports multiple HTTP methods (GET, PUT, POST, DELETE, PATCH)
 - Can be run with [Bun](https://bun.sh/) for fast execution
 
@@ -34,6 +35,10 @@ src/
       index.ts
       [id].ts
       PostEditor.tsx
+    docs/
+      [...slug].ts        # Catch-all route (zero or more segments)
+    api/
+      [[...path]].ts      # Greedy route (one or more segments)
 ```
 
 2. In your route files, export functions for the HTTP methods you want to handle. For example, in `src/routes/users/[id].ts`:
@@ -120,6 +125,55 @@ To use these methods, export functions with the corresponding names in your rout
 - `onRequestPost`
 - `onRequestDelete`
 - `onRequestPatch`
+
+## Dynamic and Greedy Routes
+
+### Dynamic Routes
+Standard dynamic routes match a single path segment:
+- File: `[id].ts` → Route: `:id`
+- Example: `/users/[id].ts` matches `/users/123` but not `/users/123/posts`
+
+### Greedy Routes
+Greedy routes can match multiple path segments:
+
+#### Double-bracket syntax `[[param]]` (one or more segments)
+- File: `[[path]].ts` → Route: `:path{.+}`
+- Example: `/api/[[path]].ts` matches `/api/v1`, `/api/v1/users`, etc.
+- Does NOT match: `/api` (requires at least one segment)
+
+#### Spread syntax `[...param]` (zero or more segments)
+- File: `[...slug].ts` → Route: `:slug{.*}`
+- Example: `/docs/[...slug].ts` matches `/docs`, `/docs/intro`, `/docs/guides/setup`, etc.
+
+### Route Priority
+Routes are automatically sorted to ensure correct matching:
+1. **Static routes** (e.g., `/api/users`) - highest priority
+2. **Dynamic routes** (e.g., `/api/:id`) - medium priority
+3. **Greedy routes** (e.g., `/api/:path{.+}`) - lowest priority
+
+This ensures that more specific routes are always matched before catch-all routes.
+
+### Example Use Cases
+
+#### API Proxy
+```typescript
+// routes/proxy/[[...path]].ts
+export const onRequestGet = async (c: Context) => {
+  const path = c.req.param('path');
+  // Forward request to backend API
+  return fetch(`https://backend.api/${path}`);
+};
+```
+
+#### Documentation Catch-All
+```typescript
+// routes/docs/[...slug].ts
+export const onRequestGet = (c: Context) => {
+  const slug = c.req.param('slug') || 'index';
+  // Serve documentation page based on slug
+  return c.html(renderDocsPage(slug));
+};
+```
 
 ## Contributing
 

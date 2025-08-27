@@ -99,6 +99,9 @@ const generateRoutes = (dir, out, isDeno) => {
 						.replace(/[@/\\]/g, '_')
 						.replace(/^_+/, '')
 						.replace(/-/g, '_')
+						.replace(/\[\[\.\.\.(.+?)\]\]/g, '$1')  // Remove [[...param]]
+						.replace(/\[\.\.\.(.+?)\]/g, '$1')      // Remove [...param]
+						.replace(/\[\[(.+?)\]\]/g, '$1')        // Remove [[param]]
 						.replace(/\[(.+?)\]/g, '$1');
 					const importPathString = isDeno ? path.posix.join(basePath, entry.name) : importPath.replace(/index$/, '');
 					const relativePath = path.posix
@@ -108,7 +111,10 @@ const generateRoutes = (dir, out, isDeno) => {
 					exportedMethods.forEach(({ method, isFactory }) => {
 						const routePath = importPath
 							.replace(/index$/, '')
-							.replace(/\[(.+?)\]/g, ':$1')
+							.replace(/\[\[\.\.\.(.+?)\]\]/g, ':$1{.*}') // [[...param]] -> :param{.*} (alternate spread syntax)
+							.replace(/\[\.\.\.(.+?)\]/g, ':$1{.*}')     // [...param] -> :param{.*} (zero or more segments)
+							.replace(/\[\[(.+?)\]\]/g, ':$1{.+}')       // [[param]] -> :param{.+} (one or more segments)
+							.replace(/\[(.+?)\]/g, ':$1')               // [param] -> :param (single segment)
 							.replace(/\/$/, '');
 						const methodName = method.replace('onRequest', '').toLowerCase();
 						console.log(
@@ -131,7 +137,7 @@ const generateRoutes = (dir, out, isDeno) => {
 	traverseDirectories(dir);
 
 	/**
-	 * Custom sort function to prioritize static paths over dynamic paths
+	 * Custom sort function to prioritize static paths over dynamic paths over greedy paths
 	 * @param {Route} a
 	 * @param {Route} b
 	 * @returns {number}
@@ -143,8 +149,26 @@ const generateRoutes = (dir, out, isDeno) => {
 			const aPart = aParts[i] || '';
 			const bPart = bParts[i] || '';
 			if (aPart === bPart) continue;
-			if (aPart.startsWith(':') && !bPart.startsWith(':')) return 1;
-			if (!aPart.startsWith(':') && bPart.startsWith(':')) return -1;
+			
+			// Check if parts are parameters
+			const aIsParam = aPart.startsWith(':');
+			const bIsParam = bPart.startsWith(':');
+			
+			// Check if parts are greedy parameters (contain {.+} or {.*})
+			const aIsGreedy = aIsParam && (aPart.includes('{.+}') || aPart.includes('{.*}'));
+			const bIsGreedy = bIsParam && (bPart.includes('{.+}') || bPart.includes('{.*}'));
+			
+			// Static routes come first
+			if (!aIsParam && bIsParam) return -1;
+			if (aIsParam && !bIsParam) return 1;
+			
+			// Among parameters, non-greedy come before greedy
+			if (aIsParam && bIsParam) {
+				if (!aIsGreedy && bIsGreedy) return -1;
+				if (aIsGreedy && !bIsGreedy) return 1;
+			}
+			
+			// Alphabetical comparison for same type
 			if (aPart > bPart) return 1;
 			if (aPart < bPart) return -1;
 		}

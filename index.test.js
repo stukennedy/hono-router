@@ -295,4 +295,107 @@ export const onRequestGet = createHandlers();`;
 			assert.match(generatedContent, /app\.get\('\/api\/v1\/users\/:userId\/posts\/:postId'/);
 		});
 	});
+	
+	describe('Greedy matching', () => {
+		it('should handle double-bracket greedy matching', async () => {
+			const apiDir = path.join(routesDir, 'api');
+			fs.mkdirSync(apiDir);
+			
+			fs.writeFileSync(path.join(apiDir, '[[path]].ts'), 
+				`export const onRequestGet = (c) => c.json({ greedy: true });`);
+			
+			const result = await runCLI([routesDir, outputFile]);
+			assert.strictEqual(result.code, 0);
+			
+			const generatedContent = fs.readFileSync(outputFile, 'utf-8');
+			assert.match(generatedContent, /app\.get\('\/api\/:path\{\.\+\}'/);
+		});
+		
+		it('should handle spread syntax for catch-all routes', async () => {
+			const docsDir = path.join(routesDir, 'docs');
+			fs.mkdirSync(docsDir);
+			
+			fs.writeFileSync(path.join(docsDir, '[...slug].ts'), 
+				`export const onRequestGet = (c) => c.json({ catchAll: true });`);
+			
+			const result = await runCLI([routesDir, outputFile]);
+			assert.strictEqual(result.code, 0);
+			
+			const generatedContent = fs.readFileSync(outputFile, 'utf-8');
+			assert.match(generatedContent, /app\.get\('\/docs\/:slug\{\.\*\}'/);
+		});
+		
+		it('should sort greedy routes after static and dynamic routes', async () => {
+			const apiDir = path.join(routesDir, 'api');
+			fs.mkdirSync(apiDir);
+			
+			// Create routes in reverse priority order
+			fs.writeFileSync(path.join(apiDir, '[[blob]].ts'), 
+				`export const onRequestGet = (c) => c.json({ type: 'greedy' });`);
+			fs.writeFileSync(path.join(apiDir, '[id].ts'), 
+				`export const onRequestGet = (c) => c.json({ type: 'dynamic' });`);
+			fs.writeFileSync(path.join(apiDir, 'users.ts'), 
+				`export const onRequestGet = (c) => c.json({ type: 'static' });`);
+			
+			const result = await runCLI([routesDir, outputFile]);
+			assert.strictEqual(result.code, 0);
+			
+			const generatedContent = fs.readFileSync(outputFile, 'utf-8');
+			const usersIndex = generatedContent.indexOf('/api/users');
+			const dynamicIndex = generatedContent.indexOf('/api/:id');
+			const greedyIndex = generatedContent.indexOf('/api/:blob{.+}');
+			
+			assert(usersIndex < dynamicIndex, 'Static route should come before dynamic route');
+			assert(dynamicIndex < greedyIndex, 'Dynamic route should come before greedy route');
+		});
+		
+		it('should handle nested greedy routes', async () => {
+			const v1Dir = path.join(routesDir, 'api', 'v1');
+			fs.mkdirSync(v1Dir, { recursive: true });
+			
+			fs.writeFileSync(path.join(v1Dir, '[[...rest]].ts'), 
+				`export const onRequestGet = (c) => c.json({ rest: true });`);
+			
+			const result = await runCLI([routesDir, outputFile]);
+			assert.strictEqual(result.code, 0);
+			
+			const generatedContent = fs.readFileSync(outputFile, 'utf-8');
+			assert.match(generatedContent, /app\.get\('\/api\/v1\/:rest\{\.\*\}'/);
+		});
+		
+		it('should handle multiple greedy parameters in path', async () => {
+			const proxyDir = path.join(routesDir, 'proxy', '[[host]]');
+			fs.mkdirSync(proxyDir, { recursive: true });
+			
+			fs.writeFileSync(path.join(proxyDir, '[[...path]].ts'), 
+				`export const onRequestGet = (c) => c.json({ proxy: true });`);
+			
+			const result = await runCLI([routesDir, outputFile]);
+			assert.strictEqual(result.code, 0);
+			
+			const generatedContent = fs.readFileSync(outputFile, 'utf-8');
+			assert.match(generatedContent, /app\.get\('\/proxy\/:host\{\.\+\}\/:path\{\.\*\}'/);
+		});
+		
+		it('should handle greedy routes with multiple HTTP methods', async () => {
+			const restDir = path.join(routesDir, 'rest');
+			fs.mkdirSync(restDir);
+			
+			const routeContent = `
+export const onRequestGet = (c) => c.json({ method: 'GET' });
+export const onRequestPost = (c) => c.json({ method: 'POST' });
+export const onRequestPut = (c) => c.json({ method: 'PUT' });
+export const onRequestDelete = (c) => c.json({ method: 'DELETE' });`;
+			fs.writeFileSync(path.join(restDir, '[[...path]].ts'), routeContent);
+			
+			const result = await runCLI([routesDir, outputFile]);
+			assert.strictEqual(result.code, 0);
+			
+			const generatedContent = fs.readFileSync(outputFile, 'utf-8');
+			assert.match(generatedContent, /app\.get\('\/rest\/:path\{\.\*\}', rest_path\.onRequestGet\)/);
+			assert.match(generatedContent, /app\.post\('\/rest\/:path\{\.\*\}', rest_path\.onRequestPost\)/);
+			assert.match(generatedContent, /app\.put\('\/rest\/:path\{\.\*\}', rest_path\.onRequestPut\)/);
+			assert.match(generatedContent, /app\.delete\('\/rest\/:path\{\.\*\}', rest_path\.onRequestDelete\)/);
+		});
+	});
 });
