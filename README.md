@@ -117,6 +117,7 @@ The generator supports the following HTTP methods:
 - POST
 - DELETE
 - PATCH
+- OPTIONS
 
 To use these methods, export functions with the corresponding names in your route files:
 
@@ -125,6 +126,21 @@ To use these methods, export functions with the corresponding names in your rout
 - `onRequestPost`
 - `onRequestDelete`
 - `onRequestPatch`
+- `onRequestOptions`
+
+You can export these as either arrow functions or normal functions:
+
+```typescript
+// Arrow function
+export const onRequestGet = (c: Context) => {
+	return c.json({ message: 'Hello' });
+};
+
+// Normal function
+export function onRequestGet(c: Context) {
+	return c.json({ message: 'Hello' });
+}
+```
 
 ## Dynamic and Greedy Routes
 
