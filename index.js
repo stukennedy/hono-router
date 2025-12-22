@@ -157,15 +157,24 @@ const generateRoutes = (dir, out, isDeno) => {
   traverseDirectories(dir);
 
   /**
-   * Custom sort function to prioritize static paths over dynamic paths over greedy paths
-   * @param {Route} a
-   * @param {Route} b
+   * Custom sort function to prioritize:
+   * 1. Path depth (longer paths first)
+   * 2. Static paths over dynamic paths over greedy paths
+   * @param {string} a
+   * @param {string} b
    * @returns {number}
    */
   const sortPaths = (a, b) => {
-    const aParts = a.split("/");
-    const bParts = b.split("/");
-    for (let i = 0; i < Math.max(aParts.length, bParts.length); i++) {
+    const aParts = a.split("/").filter((p) => p !== "");
+    const bParts = b.split("/").filter((p) => p !== "");
+
+    // First, sort by path depth (longer paths first)
+    if (aParts.length !== bParts.length) {
+      return bParts.length - aParts.length; // Descending order (longer first)
+    }
+
+    // If same depth, compare segment by segment
+    for (let i = 0; i < aParts.length; i++) {
       const aPart = aParts[i] || "";
       const bPart = bParts[i] || "";
       if (aPart === bPart) continue;
